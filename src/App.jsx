@@ -12,6 +12,12 @@ function getTodaysTeam() {
   return TEAMS_DATABASE[index]
 }
 
+// Obtener equipo aleatorio
+function getRandomTeam() {
+  const index = Math.floor(Math.random() * TEAMS_DATABASE.length)
+  return TEAMS_DATABASE[index]
+}
+
 const HINTS_CONFIG = [
   { key: 'country', icon: '🌍', label: 'País' },
   { key: 'colors', icon: '🎨', label: 'Colores' },
@@ -22,6 +28,7 @@ const HINTS_CONFIG = [
 ]
 
 function App() {
+  const [gameMode, setGameMode] = useState('daily') // 'daily' | 'infinite'
   const [secretTeam, setSecretTeam] = useState(null)
   const [inputValue, setInputValue] = useState('')
   const [attempts, setAttempts] = useState([])
@@ -29,10 +36,22 @@ function App() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [message, setMessage] = useState(null)
   const [showResult, setShowResult] = useState(false)
+  
+  // Estadísticas modo infinito
+  const [infiniteStats, setInfiniteStats] = useState({
+    played: 0,
+    won: 0,
+    currentStreak: 0,
+    maxStreak: 0
+  })
 
   useEffect(() => {
-    setSecretTeam(getTodaysTeam())
-  }, [])
+    if (gameMode === 'daily') {
+      setSecretTeam(getTodaysTeam())
+    } else {
+      setSecretTeam(getRandomTeam())
+    }
+  }, [gameMode])
 
   const filteredTeams = inputValue.length > 0
     ? TEAM_NAMES.filter(t => t.toLowerCase().includes(inputValue.toLowerCase()))
@@ -54,11 +73,31 @@ function App() {
       setGameStatus('won')
       setShowResult(true)
       showMessage('✅ ¡Correcto!', 'success')
+      
+      // Actualizar estadísticas modo infinito
+      if (gameMode === 'infinite') {
+        setInfiniteStats(prev => ({
+          ...prev,
+          won: prev.won + 1,
+          played: prev.played + 1,
+          currentStreak: prev.currentStreak + 1,
+          maxStreak: Math.max(prev.maxStreak, prev.currentStreak + 1)
+        }))
+      }
     } else {
       if (attempts.length + 1 >= 6) {
         setGameStatus('lost')
         setShowResult(true)
         showMessage('❌ Game Over', 'error')
+        
+        // Actualizar estadísticas modo infinito
+        if (gameMode === 'infinite') {
+          setInfiniteStats(prev => ({
+            ...prev,
+            played: prev.played + 1,
+            currentStreak: 0
+          }))
+        }
       } else {
         showMessage('❌ Incorrecto - Nueva pista desbloqueada', 'error')
       }
@@ -80,8 +119,9 @@ function App() {
   }
 
   const shareResult = () => {
-    const status = gameStatus === 'won' ? `¡Acertado en ${attempts.length + 1} intentos!` : 'No acertado 😢'
-    const text = `FUTBOL-LE ⚽\n\n${status}\n🎯 ${secretTeam?.name}\n\nfutbolle.app`
+    const modeText = gameMode === 'daily' ? 'Modo Diario' : 'Modo Infinito'
+    const status = gameStatus === 'won' ? `¡Acertado en ${attempts.length} intentos!` : 'No acertado 😢'
+    const text = `FUTBOL-LE ⚽ ${modeText}\n\n${status}\n🎯 ${secretTeam?.name}\n\nfutbolle.app`
     navigator.clipboard.writeText(text)
     showMessage('¡Copiado al portapapeles!', 'success')
   }
@@ -91,7 +131,24 @@ function App() {
     setGameStatus('playing')
     setShowResult(false)
     setInputValue('')
-    setSecretTeam(getTodaysTeam())
+    
+    if (gameMode === 'infinite') {
+      // En modo infinito, nuevo equipo aleatorio
+      let newTeam = getRandomTeam()
+      while (newTeam.name === secretTeam?.name) {
+        newTeam = getRandomTeam()
+      }
+      setSecretTeam(newTeam)
+    } else {
+      // En modo daily, mismo equipo del día
+      setSecretTeam(getTodaysTeam())
+    }
+  }
+
+  const toggleGameMode = () => {
+    const newMode = gameMode === 'daily' ? 'infinite' : 'daily'
+    setGameMode(newMode)
+    resetGame()
   }
 
   if (!secretTeam) return <div className="loading">Cargando...</div>
@@ -100,12 +157,39 @@ function App() {
     <div className="container">
       <header className="header">
         <h1>⚽ FUTBOL-LE</h1>
-        <p>Adivina el equipo secreto del día</p>
+        <p>Adivina el equipo secreto</p>
       </header>
 
+      {/* Selector de modo */}
+      <div className="game-mode-selector">
+        <button 
+          className={`mode-btn ${gameMode === 'daily' ? 'active' : ''}`}
+          onClick={() => gameMode !== 'daily' && toggleGameMode()}
+        >
+          📅 Diario
+        </button>
+        <button 
+          className={`mode-btn ${gameMode === 'infinite' ? 'active' : ''}`}
+          onClick={() => gameMode !== 'infinite' && toggleGameMode()}
+        >
+          ♾️ Infinito
+        </button>
+      </div>
+
       <div className="game-info">
-        <div className="day">Día #{new Date().getDate() + 50}</div>
-        <div className="category">🌍 Equipos de todo el mundo</div>
+        {gameMode === 'daily' ? (
+          <>
+            <div className="day">Día #{new Date().getDate() + 50}</div>
+            <div className="category">🌍 Un equipo al día</div>
+          </>
+        ) : (
+          <>
+            <div className="day">Modo Infinito</div>
+            <div className="category">
+              🔥 Racha: {infiniteStats.currentStreak} | ✅ Ganados: {infiniteStats.won}/{infiniteStats.played}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Input */}
@@ -219,11 +303,18 @@ function App() {
                 : 'El equipo era:'
               }
             </div>
+            {gameMode === 'infinite' && (
+              <div className="infinite-stats">
+                🔥 Racha actual: {infiniteStats.currentStreak}
+                <br/>
+                📊 Total: {infiniteStats.won}/{infiniteStats.played} ganados
+              </div>
+            )}
             <button className="share-btn" onClick={shareResult}>
               📤 Compartir resultado
             </button>
             <button className="play-again-btn" onClick={resetGame}>
-              Jugar de nuevo
+              {gameMode === 'infinite' ? 'Siguiente equipo →' : 'Jugar de nuevo'}
             </button>
           </div>
         </div>

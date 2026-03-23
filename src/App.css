@@ -393,6 +393,46 @@ body {
   background: rgba(255,255,255,0.1);
 }
 
+/* Game Mode Selector */
+.game-mode-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 5px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 12px;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #888;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mode-btn.active {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #1a1a2e;
+}
+
+.mode-btn:not(.active):hover {
+  background: rgba(255,255,255,0.1);
+  color: white;
+}
+
+/* Infinite stats in modal */
+.infinite-stats {
+  color: #ffd700;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .container {
